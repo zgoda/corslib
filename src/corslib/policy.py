@@ -1,18 +1,31 @@
 import fnmatch
+import re
 from dataclasses import dataclass
-from typing import Mapping, Optional, Sequence
+from typing import ClassVar, List, Mapping, Optional, Sequence
 
 
 @dataclass
 class OriginRule:
     rule: str
-    kind: Optional[str] = None
+    kind: str = 'str'
 
-    def allow_origin(self, request_origin: str) -> str:
-        kind = self.kind.lower()
-        if self.kind is None or kind.lower() in ['str', 'string']:
+    ALLOWED_KINDS: ClassVar[List[str]] = [
+        'str', 'path', 'regex'
+    ]
+
+    def __post_init__(self):
+        self.kind = self.kind.lower()
+        if self.kind not in self.ALLOWED_KINDS:
+            raise ValueError(
+                f'Unknown kind {self.kind}, allowed kinds: {self.ALLOWED_KINDS}'
+            )
+
+    def allow_origin(self, request_origin: str) -> Optional[str]:
+        if self.kind == 'str':
             return self.rule
-        if kind == 'path' and fnmatch.fnmatch(request_origin, self.rule):
+        if self.kind == 'path' and fnmatch.fnmatch(request_origin, self.rule):
+            return request_origin
+        if re.match(self.rule, request_origin):
             return request_origin
 
 
@@ -56,9 +69,3 @@ class Policy:
         self._preflight_sent = True
         self._preflight_headers = resp_headers
         return resp_headers
-
-
-class DefaultAllowAllPolicy(Policy):
-
-    def __init__(self):
-        super().__init__(name='DefaultAllowAll')
