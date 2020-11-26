@@ -6,6 +6,24 @@ from typing import ClassVar, List, Mapping, Optional, Sequence
 
 @dataclass
 class OriginRule:
+    """A rule for origin check.
+
+    Rule consists of string representing rule and kind. Supported kinds of
+    rules are ``str``, ``path`` and ``regex``. This allows for describing a
+    wide range of rules.
+
+    * ``str`` kind of rule should be used if the rule describes exact host name
+      or allows all hosts (``*``)
+    * ``path`` kind uses filename pattern matching provided by :mod:`fnmatch`,
+      this is fastest non-exact matching method
+    * ``regex`` allows matching against arbitrary regular expressions supported
+      by Python :mod:`re` module
+
+    Matching is done in :meth:`~corslib.policy.OriginRule.allow_origin` method
+    that matches origin specification from HTTP request against rule using
+    appropriate procedure.
+    """
+
     rule: str
     kind: str = 'str'
 
@@ -21,6 +39,17 @@ class OriginRule:
             )
 
     def allow_origin(self, request_origin: str) -> Optional[str]:
+        """Match origin spec from request against rule.
+
+        The matching is done using method specified in :attr:`kind`. If
+        :attr:`kind` is ``str`` then rule value is returned, otherwise the
+        spec from request (if matches) or None (if not).
+
+        :param request_origin: origin spec from request
+        :type request_origin: str
+        :return: allowed origin spec or None
+        :rtype: Optional[str]
+        """
         if self.kind == 'str':
             return self.rule
         if self.kind == 'path' and fnmatch.fnmatch(request_origin, self.rule):
