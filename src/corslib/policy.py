@@ -58,7 +58,7 @@ class OriginRule:
             return self.rule
         if self.kind == RuleKind.PATH and fnmatch(request_origin, self.rule):
             return request_origin
-        if re.match(self.rule, request_origin):
+        if self.kind == RuleKind.REGEX and re.match(self.rule, request_origin):
             return request_origin
 
 
