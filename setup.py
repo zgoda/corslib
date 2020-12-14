@@ -45,7 +45,6 @@ dev_reqs = [
     'pep8-naming',
     'dlint',
     'rstcheck',
-    'snooty',
     'rope',
     'isort',
 ] + test_reqs + docs_reqs
