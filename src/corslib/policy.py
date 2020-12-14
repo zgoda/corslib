@@ -10,7 +10,9 @@ class RuleKind(Enum):
 
     * ``str`` kind of rule should be used if the rule describes exact host name
       or allows all hosts (``*``)
-    * ``path`` kind uses filename pattern matching provided by :mod:`fnmatch`
+    * ``path`` kind uses filename pattern matching provided by :mod:`fnmatch`,
+      this allows for example to match all subdomains (``*.mydomain.com``) or
+      sets of specific hosts (``myapp-prod-??.mydomain.com``)
     * ``regex`` allows matching against arbitrary regular expressions supported
       by Python :mod:`re` module
     """
@@ -23,7 +25,8 @@ class RuleKind(Enum):
 class OriginRule:
     """A rule for origin check.
 
-    Rule consists of string representing rule and kind. Matching is done in
+    Rule consists of string representing rule and kind (default is
+    :attr:`~corslib.policy.RuleKind.STR`). Matching is done in
     :meth:`~corslib.policy.OriginRule.allow_origin` method
     that matches origin specification from HTTP request against rule using
     appropriate procedure for selected kind.
@@ -42,8 +45,9 @@ class OriginRule:
         """Match origin spec from request against rule.
 
         The matching is done using method specified in :attr:`kind`. If
-        :attr:`kind` is ``str`` then rule value is returned, otherwise the
-        spec from request (if matches) or None (if not).
+        :attr:`kind` is :attr:`~corslib.policy.RuleKind.STR` then rule value is
+        returned. In any other case returned is the spec from request (if
+        matches) or None (if not).
 
         :param request_origin: origin spec from request
         :type request_origin: str
