@@ -30,13 +30,12 @@ test_reqs = [
 
 docs_reqs = [
     'Sphinx',
+    'furo',
 ]
 
 dev_reqs = [
     'ipython',
     'ipdb',
-    'pip',
-    'setuptools',
     'wheel',
     'flake8',
     'flake8-builtins',

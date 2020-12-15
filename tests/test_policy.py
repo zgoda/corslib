@@ -4,16 +4,12 @@ from corslib.policy import OriginRule, RuleKind
 
 
 def test_origin_rule_default_create():
-    """Verify that default rule kind is ``str``.
-    """
     r = OriginRule(rule='*')
     assert r.kind == RuleKind.STR
 
 
 @pytest.mark.parametrize('allow', ['*', 'test.somewhere.net'], ids=['all', 'host'])
 def test_origin_rule_str(allow):
-    """Verify that ``str`` kind of rule allows only defined spec.
-    """
     r = OriginRule(rule=allow)
     assert r.allow_origin('dummy.net') == r.rule
 
@@ -26,10 +22,12 @@ def test_origin_rule_path_allow_star(test):
     assert r.allow_origin(req_allow) == req_allow
 
 
-def test_origin_rule_path_disallow_star():
+@pytest.mark.parametrize('test', [
+    'website.com', 'www.othersite.com'
+], ids=['bare', 'other'])
+def test_origin_rule_path_disallow_star(test):
     r = OriginRule(rule='*.website.com', kind=RuleKind.PATH)
-    req_allow = 'website.com'
-    assert r.allow_origin(req_allow) is None
+    assert r.allow_origin(test) is None
 
 
 @pytest.mark.parametrize('test', ['test1', 'testy'], ids=['num', 'alpha'])
