@@ -50,7 +50,7 @@ dev_reqs = [
 
 setup(
     name='corslib',
-    version=find_version('src', 'corslib', '__version__.py'),
+    version=find_version('src', 'corslib', '_version.py'),
     author='Jarek Zgoda',
     author_email='jarek.zgoda@gmail.com',
     description='Policy-based CORS support library for web applications',
@@ -63,6 +63,11 @@ setup(
     include_package_data=True,
     zip_safe=False,
     url='http://github.com/zgoda/corslib',
+    project_urls={
+        'Documentation': 'https://corslib.readthedocs.io/',
+        'Source': 'https://github.com/zgoda/corslib',
+        'Issues': 'https://github.com/zgoda/corslib/issues',
+    },
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Environment :: Web Environment',
