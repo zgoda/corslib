@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from fnmatch import fnmatch
-from typing import Mapping, Optional, Sequence, Union
+from typing import Mapping, Optional, Sequence, Union, List
 
 
 class RuleKind(Enum):
@@ -105,8 +105,9 @@ class Policy:
     )
 
     def preflight_response_headers(
-                self, request_headers: Mapping[str, Union[str, int]]
-            ) -> Mapping[str, Union[str, int]]:
+                self, request_headers: Mapping[str, Union[str, int]],
+                credentials: bool = False,
+            ) -> Mapping[str, Union[str, int, List[str]]]:
         """Generate preflight response headers.
 
         This method takes request headers as any mapping compatible structure.
@@ -120,19 +121,24 @@ class Policy:
 
         :param request_headers: headers from preflight requests
         :type request_headers: Mapping[str, Union[str, int]]
+        :param credentials: flag signalling that endpoint accepts cookies
+                            (default is False)
+        :type credentials: bool
         :return: generated headers values as Python dict
-        :rtype: Mapping[str, Union[str, int]]
+        :rtype: Mapping[str, Union[str, int, List[str]]]
         """
-        if self._preflight_sent:
-            return self._preflight_headers
         resp_headers = {}
         req_origin = request_headers['Origin']
         if self.allow_origin:
             for rule in self.allow_origin:
                 allow_origin = rule.allow_origin(req_origin)
                 if req_origin == allow_origin:
-                    resp_headers['Access-Control-Allow-Origin'] = allow_origin
-                    if allow_origin != '*':
+                    if allow_origin == '*' and credentials:
+                        header_value = req_origin
+                    else:
+                        header_value = allow_origin
+                    resp_headers['Access-Control-Allow-Origin'] = header_value
+                    if header_value != '*':
                         resp_headers['Vary'] = 'Origin'
                     break
         else:
@@ -141,10 +147,23 @@ class Policy:
             resp_headers['Access-Control-Allow-Headers'] = ', '.join(self.allow_headers)
         if self.allow_methods:
             resp_headers['Access-Control-Allow-Methods'] = ', '.join(self.allow_methods)
-        if self.allow_credentials:
+        if self.allow_credentials and credentials:
             resp_headers['Access-Control-Allow-Credentials'] = 'true'
         if self.max_age:
             resp_headers['Access-Control-Max-Age'] = self.max_age
-        self._preflight_sent = True
         self._preflight_headers = resp_headers
         return resp_headers
+
+    def response_headers(
+                self, credentials: bool = False,
+            ) -> Mapping[str, Union[str, List[str]]]:
+        headers = {}
+        if self._preflight_headers:
+            headers['Access-Control-Allow-Origin'] = \
+                self._preflight_headers['Access-Control-Allow-Origin']
+            if self.allow_credentials and credentials:
+                headers['Access-Control-Allow-Credentials'] = 'true'
+            vary = self._preflight_headers.get('Vary')
+            if vary:
+                headers['Vary'] = [vary]
+        return headers
