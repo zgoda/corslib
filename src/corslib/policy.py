@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from fnmatch import fnmatch
-from typing import List, Mapping, Optional, Sequence, Union
+from typing import ClassVar, List, Mapping, Optional, Sequence, Union
 
 
 class PolicyError(ValueError):
@@ -103,6 +103,9 @@ class Policy:
     expose_headers: Optional[Sequence[str]] = None
     max_age: Optional[int] = None
 
+    ACCESS_CONTROL_ALLOW_ORIGIN: ClassVar[str] = 'Access-Control-Allow-Origin'
+    ACCESS_CONTROL_ALLOW_CREDENTIALS: ClassVar[str] = 'Access-Control-Allow-Credentials'
+
     def __post_init__(self):
         if self.allow_credentials:
             allow_any = (
@@ -113,7 +116,7 @@ class Policy:
                 raise PolicyError('Open policy not allowed for credentialed requests')
 
     def preflight_response_headers(
-                self, request_headers: Mapping[str, Union[str, int]]
+                self, origin: str, request_credentials: bool = False,
             ) -> Mapping[str, Union[str, int, List[str]]]:
         """Generate preflight response headers.
 
@@ -126,32 +129,93 @@ class Policy:
         adapted to framework/library specific implementation of HTTP headers
         structure.
 
-        :param request_headers: headers from preflight requests
-        :type request_headers: Mapping[str, Union[str, int]]
-        :param credentials: flag signalling that endpoint accepts cookies
-                            (default is False)
-        :type credentials: bool
-        :return: generated headers values as Python dict
+        :param origin: value of the Origin request header
+        :type origin: str
+        :param request_credentials: indicates response to credentialed
+                                    request, defaults to False
+        :type request_credentials: bool, optional
+        :return: generated header values as Python dict
         :rtype: Mapping[str, Union[str, int, List[str]]]
         """
         resp_headers = {}
-        req_origin = request_headers['Origin']
-        if self.allow_origin:
-            for rule in self.allow_origin:
-                allow_origin = rule.allow_origin(req_origin)
-                if req_origin == allow_origin:
-                    resp_headers['Access-Control-Allow-Origin'] = allow_origin
-                    if allow_origin != '*':
-                        resp_headers['Vary'] = 'Origin'
-                    break
-        else:
-            resp_headers['Access-Control-Allow-Origin'] = '*'
+        resp_headers.update(self.access_control_allow_origin(origin))
         if self.allow_headers:
             resp_headers['Access-Control-Allow-Headers'] = ', '.join(self.allow_headers)
         if self.allow_methods:
             resp_headers['Access-Control-Allow-Methods'] = ', '.join(self.allow_methods)
-        if self.allow_credentials:
-            resp_headers['Access-Control-Allow-Credentials'] = 'true'
+        resp_headers.update(
+            self.access_control_allow_credentials(
+                request_credentials, resp_headers[self.ACCESS_CONTROL_ALLOW_ORIGIN]
+            )
+        )
+        if self.allow_credentials or request_credentials:
+            if resp_headers[self.ACCESS_CONTROL_ALLOW_ORIGIN] != '*':
+                resp_headers[self.ACCESS_CONTROL_ALLOW_CREDENTIALS] = 'true'
         if self.max_age:
             resp_headers['Access-Control-Max-Age'] = self.max_age
         return resp_headers
+
+    def response_headers(
+                self, origin: str, request_credentials: bool = False
+            ) -> Mapping[str, str]:
+        """Generate regular response headers.
+
+        :param origin: value of the Origin request header
+        :type origin: str
+        :param request_credentials: indicates response to credentialed
+                                    request, defaults to False
+        :type request_credentials: bool, optional
+        :return: generated header values as Python dict
+        :rtype: Mapping[str, str]
+        """
+        resp_headers = {}
+        resp_headers.update(self.access_control_allow_origin(origin))
+        resp_headers.update(
+            self.access_control_allow_credentials(
+                request_credentials, resp_headers[self.ACCESS_CONTROL_ALLOW_ORIGIN]
+            )
+        )
+        return resp_headers
+
+    def access_control_allow_credentials(
+                self, request_credentials: bool, allow_origin: str
+            ) -> Mapping[str, str]:
+        """Generate Access-Control-Allow-Credentials header entry.
+
+        If request is to be denied then this method returns empty dict.
+
+        :param request_credentials: indicates response to credentialed request
+        :type request_credentials: bool
+        :param allow_origin: calculated allowed origin
+        :type allow_origin: str
+        :return: Access-Control-Allow-Credentials header entry or empty dict
+        :rtype: Mapping[str, str]
+        """
+        if self.allow_credentials or request_credentials:
+            if allow_origin != '*':
+                return {self.ACCESS_CONTROL_ALLOW_CREDENTIALS: 'true'}
+        return {}
+
+    def access_control_allow_origin(self, origin: str) -> Mapping[str, str]:
+        """Generate Access-Control-Allow-Origin header entry.
+
+        Additionally if value is not ``*`` then ``Vary`` header value is
+        generated.
+
+        :param origin: value of the Origin header
+        :type origin: str
+        :return: Access-Control-Allow-Origin header entry, and optionally also
+                 Vary header entry
+        :rtype: Mapping[str, str]
+        """
+        if self.allow_origin:
+            headers = {}
+            for rule in self.allow_origin:
+                allow_origin = rule.allow_origin(origin)
+                if origin == allow_origin:
+                    headers[self.ACCESS_CONTROL_ALLOW_ORIGIN] = allow_origin
+                    if allow_origin != '*':
+                        headers['Vary'] = 'Origin'
+                    break
+            return headers
+        return {self.ACCESS_CONTROL_ALLOW_ORIGIN: '*'}

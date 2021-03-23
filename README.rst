@@ -19,3 +19,5 @@ CORS support library for web servers
 
 
 Policy-based CORS support library for web applications.
+
+This is framework- and protocol-agnostic library that provides CORS policy object that is able to generate both preflight and regular response headers `for Cross Origin Resource Sharing <https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS>`_.
