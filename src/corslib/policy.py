@@ -137,6 +137,8 @@ class Policy:
         :return: generated header values as Python dict
         :rtype: Mapping[str, Union[str, int, List[str]]]
         """
+        if not origin or origin == 'null':
+            return {}
         resp_headers = {}
         resp_headers.update(self.access_control_allow_origin(origin))
         if self.allow_headers:
@@ -168,6 +170,8 @@ class Policy:
         :return: generated header values as Python dict
         :rtype: Mapping[str, str]
         """
+        if not origin or origin == 'null':
+            return {}
         resp_headers = {}
         resp_headers.update(self.access_control_allow_origin(origin))
         resp_headers.update(
