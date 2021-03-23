@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from fnmatch import fnmatch
-from typing import Mapping, Optional, Sequence, Union, List
+from typing import List, Mapping, Optional, Sequence, Union
 
 
 class PolicyError(ValueError):

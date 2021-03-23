@@ -21,6 +21,7 @@ def find_version(*where):
 
 
 base_reqs = [
+    'dataclasses ; python_version < "3.7"'
 ]
 
 test_reqs = [
@@ -50,7 +51,7 @@ dev_reqs = [
 
 setup(
     name='corslib',
-    version=find_version('src', 'corslib', '_version.py'),
+    version=find_version('src', 'corslib', '__init__.py'),
     author='Jarek Zgoda',
     author_email='jarek.zgoda@gmail.com',
     description='Policy-based CORS support library for web applications',
@@ -74,6 +75,7 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
@@ -84,5 +86,5 @@ setup(
         'test': test_reqs,
         'docs': docs_reqs,
     },
-    python_requires='~=3.7',
+    python_requires='~=3.6',
 )

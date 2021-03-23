@@ -76,3 +76,19 @@ def test_origin_rule_path_disallow_range_excl(test):
     r = OriginRule(rule=f'test[!1y].{domain}', kind=RuleKind.PATH)
     req_allow = f'{test}.{domain}'
     assert r.allow_origin(req_allow) is None
+
+
+@pytest.mark.parametrize('test', ['testa', 'test1'], ids=['alpha', 'num'])
+def test_origin_rule_regex_allow_singlechar(test):
+    domain = 'website.com'
+    r = OriginRule(rule=r'^test\S\.website\.com$', kind=RuleKind.REGEX)
+    req_allow = f'{test}.{domain}'
+    assert r.allow_origin(req_allow) == req_allow
+
+
+@pytest.mark.parametrize('test', ['testaa', 'test12'], ids=['alpha', 'num'])
+def test_origin_rule_regex_disallow_singlechar(test):
+    domain = 'website.com'
+    r = OriginRule(rule=r'^test\S\.website\.com$', kind=RuleKind.REGEX)
+    req_allow = f'{test}.{domain}'
+    assert r.allow_origin(req_allow) is None
