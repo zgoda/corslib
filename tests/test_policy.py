@@ -22,5 +22,14 @@ def test_allow_credentials_setup_valid():
     'origin', [None, [OriginRule(rule='*')]], ids=['empty', 'star']
 )
 def test_allow_credentials_setup_invalid_empty_origin(origin):
-    with pytest.raises(PolicyError):
+    with pytest.raises(PolicyError, match='policy not allowed'):
         Policy(name='policy1', allow_credentials=True, allow_origin=origin)
+
+
+@pytest.mark.parametrize(
+    'origin', ['', None, 'null'], ids=['empty-str', 'none', 'null-literal']
+)
+def test_preflight_headers_empty_origin(origin):
+    policy = Policy(name='policy1')
+    rv = policy.preflight_response_headers(origin)
+    assert rv == {}
