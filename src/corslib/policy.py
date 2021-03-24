@@ -9,6 +9,22 @@ class PolicyError(ValueError):
     pass
 
 
+class RuleError(ValueError):
+    pass
+
+
+class InsecureRule(RuleError):
+
+    def __init__(
+                self, message: str, *, rule: str, rule_type: str,
+                description: Optional[str] = None,
+            ):
+        self.rule = rule
+        self.rule_type = rule_type
+        self.description = description
+        super().__init__(message)
+
+
 class RuleKind(Enum):
     """Enumeration of supported rule kinds.
 
@@ -44,6 +60,19 @@ class OriginRule:
 
     rule: str
     kind: RuleKind = RuleKind.STR
+
+    def __post_init__(self):
+        kw = {'rule': self.rule, 'rule_type': self.kind.value}
+        if self.kind == RuleKind.REGEX:
+            if not (self.rule.startswith('^') and self.rule.endswith('$')):
+                raise InsecureRule('Insecure rule: partial match regex', **kw) from None
+            if '.*' in self.rule:
+                raise InsecureRule('Insecure rule: too broad', **kw) from None
+        elif self.kind == RuleKind.PATH:
+            if self.rule.startswith('*') or self.rule.endswith('*'):
+                raise InsecureRule('InsecureRule: open ended', **kw) from None
+            if not self.rule.startswith('http'):
+                raise InsecureRule('Insecure rule: protocol missing', **kw) from None
 
     def allow_origin(self, request_origin: str) -> Optional[str]:
         """Match origin spec from request against rule.
