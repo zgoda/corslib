@@ -1,6 +1,6 @@
 import pytest
 
-from corslib.policy import OriginRule, RuleKind
+from corslib.policy import OriginRule, RuleKind, InsecureRule
 
 
 def test_default_create():
@@ -94,3 +94,34 @@ def test_regex_disallow_singlechar(test):
     r = OriginRule(rule=r'^test\S\.website\.com$', kind=RuleKind.REGEX)
     req_allow = f'{test}.{domain}'
     assert r.allow_origin(req_allow) is None
+
+
+@pytest.mark.parametrize(
+    'rule',
+    [r'website.com', r'^website.com', r'website.com$'],
+    ids=['none', 'missing-end', 'missing-beginning'],
+)
+def test_invalid_regex_rule_partial_regex(rule):
+    with pytest.raises(InsecureRule, match='partial match regex') as e:
+        OriginRule(rule=rule, kind=RuleKind.REGEX)
+    assert e.value.rule == rule
+
+
+@pytest.mark.parametrize(
+    'rule',
+    [r'^.*\.website\.com$', r'^http://www\..*site\com$', r'^http://some\.site\..*$'],
+    ids=['beginning', 'middle', 'end'],
+)
+def test_invalid_regex_rule_too_broad(rule):
+    with pytest.raises(InsecureRule, match='too broad') as e:
+        OriginRule(rule=rule, kind=RuleKind.REGEX)
+    assert e.value.rule == rule
+
+
+@pytest.mark.parametrize(
+    'rule', ['*.site.com', 'http://site.*'], ids=['beginning', 'end']
+)
+def test_invalid_path_rule_open_ended(rule):
+    with pytest.raises(InsecureRule, match='open ended') as e:
+        OriginRule(rule=rule, kind=RuleKind.PATH)
+    assert e.value.rule == rule

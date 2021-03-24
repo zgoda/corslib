@@ -13,7 +13,7 @@ class RuleError(ValueError):
     pass
 
 
-class InsecureRule(RuleError):
+class InsecureRule(RuleError):  # pragma: nocover
 
     def __init__(
                 self, message: str, *, rule: str, rule_type: str,
@@ -72,8 +72,6 @@ class OriginRule:
         elif self.kind == RuleKind.PATH:
             if self.rule.startswith('*') or self.rule.endswith('*'):
                 raise InsecureRule('InsecureRule: open ended', **kw) from None
-            if not self.rule.startswith('http'):
-                raise InsecureRule('Insecure rule: protocol missing', **kw) from None
 
     def allow_origin(self, request_origin: str) -> Optional[str]:
         """Match origin spec from request against rule.
