@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from fnmatch import fnmatch
-from typing import ClassVar, List, Mapping, Optional, Sequence, Union
+from typing import ClassVar, Mapping, Optional, Sequence, Union
 
 
 class PolicyError(ValueError):
@@ -31,8 +31,9 @@ class RuleKind(Enum):
     * ``str`` kind of rule should be used if the rule describes exact host name
       or allows all hosts (``*``)
     * ``path`` kind uses filename pattern matching provided by :mod:`fnmatch`,
-      this allows for example to match all subdomains (``*.mydomain.com``) or
-      sets of specific hosts (``myapp-prod-??.mydomain.com``)
+      this allows for example to match all subdomains
+      (``http://*.mydomain.com``) or sets of specific hosts
+      (``http://myapp-prod-??.mydomain.com``)
     * ``regex`` allows matching against arbitrary regular expressions supported
       by Python :mod:`re` module
     """
@@ -91,7 +92,8 @@ class OriginRule:
             return self.rule
         if self.kind == RuleKind.PATH and fnmatch(request_origin, self.rule):
             return request_origin
-        if self.kind == RuleKind.REGEX and re.match(self.rule, request_origin):
+        if (self.kind == RuleKind.REGEX
+                and re.match(self.rule, request_origin, re.DOTALL | re.MULTILINE)):
             return request_origin
 
 
@@ -146,12 +148,12 @@ class Policy:
 
     def preflight_response_headers(
                 self, origin: str, request_credentials: bool = False,
-            ) -> Mapping[str, Union[str, int, List[str]]]:
+            ) -> Mapping[str, Union[str, int]]:
         """Generate preflight response headers.
 
-        This method takes request headers as any mapping compatible structure.
-        Since only Origin is being read from request and it's single-value, the
-        structure may be any object that implements basic mapping protocol.
+        This method takes value of Origin header from request and a flag if
+        request will be "credentialed", that is it will include cookies and/or
+        authentication HTTP header.
 
         Returned value is also generic dict. If multiple values are returned
         for any key, they are returned as list so the result needs to be
@@ -164,7 +166,7 @@ class Policy:
                                     request, defaults to False
         :type request_credentials: bool, optional
         :return: generated header values as Python dict
-        :rtype: Mapping[str, Union[str, int, List[str]]]
+        :rtype: Mapping[str, Union[str, int]]
         """
         if not origin or origin == 'null':
             return {}
@@ -179,9 +181,6 @@ class Policy:
                 request_credentials, resp_headers[self.ACCESS_CONTROL_ALLOW_ORIGIN]
             )
         )
-        if self.allow_credentials or request_credentials:
-            if resp_headers[self.ACCESS_CONTROL_ALLOW_ORIGIN] != '*':
-                resp_headers[self.ACCESS_CONTROL_ALLOW_CREDENTIALS] = 'true'
         if self.max_age:
             resp_headers['Access-Control-Max-Age'] = self.max_age
         return resp_headers
@@ -224,7 +223,7 @@ class Policy:
         :return: Access-Control-Allow-Credentials header entry or empty dict
         :rtype: Mapping[str, str]
         """
-        if self.allow_credentials or request_credentials:
+        if self.allow_credentials and request_credentials:
             if allow_origin != '*':
                 return {self.ACCESS_CONTROL_ALLOW_CREDENTIALS: 'true'}
         return {}
