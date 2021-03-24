@@ -134,6 +134,8 @@ class Policy:
 
     ACCESS_CONTROL_ALLOW_ORIGIN: ClassVar[str] = 'Access-Control-Allow-Origin'
     ACCESS_CONTROL_ALLOW_CREDENTIALS: ClassVar[str] = 'Access-Control-Allow-Credentials'
+    ACCESS_CONTROL_ALLOW_METHODS: ClassVar[str] = 'Access-Control-Allow-Methods'
+    ACCESS_CONTROL_ALLOW_HEADERS: ClassVar[str] = 'Access-Control-Allow-Headers'
 
     def __post_init__(self):
         if self.allow_credentials:
@@ -146,6 +148,8 @@ class Policy:
 
     def preflight_response_headers(
                 self, origin: str, request_credentials: bool = False,
+                request_method: Optional[str] = None,
+                request_headers: Optional[str] = None,
             ) -> Mapping[str, Union[str, int]]:
         """Generate preflight response headers.
 
@@ -163,6 +167,10 @@ class Policy:
         :param request_credentials: indicates response to credentialed
                                     request, defaults to False
         :type request_credentials: bool, optional
+        :param request_method: requested HTTP method, defaults to None
+        :type request_method: str, optional
+        :param request_headers: requested HTTP headers, defaults to None
+        :type request_headers: str, optional
         :return: generated header values as Python dict
         :rtype: Mapping[str, Union[str, int]]
         """
@@ -170,10 +178,8 @@ class Policy:
             return {}
         resp_headers = {}
         resp_headers.update(self.access_control_allow_origin(origin))
-        if self.allow_headers:
-            resp_headers['Access-Control-Allow-Headers'] = ', '.join(self.allow_headers)
-        if self.allow_methods:
-            resp_headers['Access-Control-Allow-Methods'] = ', '.join(self.allow_methods)
+        resp_headers.update(self.access_control_allow_headers(request_headers))
+        resp_headers.update(self.access_control_allow_methods(request_method))
         resp_headers.update(
             self.access_control_allow_credentials(
                 request_credentials, resp_headers[self.ACCESS_CONTROL_ALLOW_ORIGIN]
@@ -249,3 +255,53 @@ class Policy:
                     break
             return headers
         return {self.ACCESS_CONTROL_ALLOW_ORIGIN: '*'}
+
+    def access_control_allow_methods(
+                self, request_method: Optional[str]
+            ) -> Mapping[str, str]:
+        """Generate Access-Control-Allow-Methods header entry.
+
+        If no specific method is requested then this method returns empty dict,
+        which usually means "default methods" (``GET``, ``HEAD``, ``POST``).
+
+        If policy does not specify allowed methods then all methods are
+        allowed. This is implemented by reflecting requested method.
+
+        :param request_method: value of Access-Control-Request-Method header
+                               from preflight request
+        :type request_method: Optional[str]
+        :return: Access-Control-Allow-Methods entry or empty dict
+        :rtype: Mapping[str, str]
+        """
+        if not request_method:
+            return {}
+        if self.allow_methods:
+            methods = self.allow_methods
+        else:
+            methods = [request_method]
+        return {self.ACCESS_CONTROL_ALLOW_METHODS: ', '.join(methods)}
+
+    def access_control_allow_headers(
+                self, request_headers: Optional[str]
+            ) -> Mapping[str, str]:
+        """Generate Access-Control-Allow-Headers header entry.
+
+        If no specific headers are requested then this method returns empty
+        dict, which usually means "default safe headers".
+
+        If policy does not specify allowed headers then all headers are
+        allowed. Tis is implemented by reflecting requested headers.
+
+        :param request_headers: value of Access-Control-Request-Headers header
+                                from preflight request
+        :type request_headers: Optional[str]
+        :return: Access-Control-Allow-Headers entry or empty dict
+        :rtype: Mapping[str, str]
+        """
+        if not request_headers:
+            return {}
+        if self.allow_headers:
+            headers = self.allow_headers
+        else:
+            headers = [x.strip() for x in request_headers.split(',')]
+        return {self.ACCESS_CONTROL_ALLOW_HEADERS: ', '.join(headers)}
