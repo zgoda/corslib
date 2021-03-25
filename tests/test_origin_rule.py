@@ -114,7 +114,6 @@ def test_null_regex_not_allowed():
     assert r.allow_origin(req_allow) is None
 
 
-
 @pytest.mark.parametrize(
     'rule',
     [r'website.com', r'^website.com', r'website.com$'],
