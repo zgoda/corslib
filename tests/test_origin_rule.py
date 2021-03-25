@@ -96,6 +96,25 @@ def test_regex_disallow_singlechar(test):
     assert r.allow_origin(req_allow) is None
 
 
+def test_null_str_allowed():
+    r = OriginRule(rule='null', kind=RuleKind.STR)
+    req_allow = 'null'
+    assert r.allow_origin(req_allow) == req_allow
+
+
+def test_null_path_not_allowed():
+    r = OriginRule(rule='null', kind=RuleKind.PATH)
+    req_allow = 'null'
+    assert r.allow_origin(req_allow) is None
+
+
+def test_null_regex_not_allowed():
+    r = OriginRule(rule='^null$', kind=RuleKind.REGEX)
+    req_allow = 'null'
+    assert r.allow_origin(req_allow) is None
+
+
+
 @pytest.mark.parametrize(
     'rule',
     [r'website.com', r'^website.com', r'website.com$'],
