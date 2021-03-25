@@ -20,14 +20,6 @@ def test_allow_credentials_setup_valid():
 
 
 @pytest.mark.parametrize(
-    'origin', [None, [OriginRule(rule='*')]], ids=['empty', 'star']
-)
-def test_allow_credentials_setup_invalid_empty_origin(origin):
-    with pytest.raises(PolicyError, match='policy not allowed'):
-        Policy(name='policy1', allow_credentials=True, allow_origin=origin)
-
-
-@pytest.mark.parametrize(
     'origin', ['', None], ids=['empty-str', 'none']
 )
 def test_preflight_headers_empty_origin(origin):
@@ -85,3 +77,25 @@ def test_preflight_headers_disallow_credentials_no_request():
     )
     rv = policy.preflight_response_headers('http://website.com')
     assert Policy.ACCESS_CONTROL_ALLOW_CREDENTIALS not in rv
+
+
+@pytest.mark.parametrize(
+    'rule',
+    [OriginRule(rule='*'), OriginRule(rule='null')],
+    ids=['star', 'null']
+)
+def test_preflight_headers_disallow_credentials(rule):
+    with pytest.raises(PolicyError, match='policy not allowed'):
+        Policy(name='policy1', allow_credentials=True, allow_origin=[rule])
+
+
+def test_response_headers_null_origin_loose():
+    policy = Policy(name='policy1')
+    rv = policy.response_headers('null')
+    assert '*' in rv.values()
+
+
+def test_response_headers_null_origin_strict():
+    policy = Policy(name='policy1')
+    rv = policy.response_headers('null', strict=True)
+    assert rv == {}

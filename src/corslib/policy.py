@@ -150,7 +150,12 @@ class Policy:
         if self.allow_credentials:
             allow_any = (
                 not self.allow_origin or
-                any(r.rule == '*' for r in self.allow_origin if r.kind == RuleKind.STR)
+                any(
+                    r.rule in ['*', 'null']
+                    for r
+                    in self.allow_origin
+                    if r.kind == RuleKind.STR
+                )
             )
             if allow_any:
                 raise PolicyError('Open policy not allowed for credentialed requests')
