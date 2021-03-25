@@ -79,7 +79,8 @@ class OriginRule:
         The matching is done using method specified in :attr:`kind`. If
         :attr:`kind` is :attr:`~corslib.policy.RuleKind.STR` then rule value is
         returned. In any other case returned is the spec from request (if
-        matches) or None (if not).
+        matches) or None (if not) with exception of ``null`` origin which can
+        be specified only by ``STR`` rule to match.
 
         :param request_origin: origin spec from request
         :type request_origin: str
@@ -88,11 +89,12 @@ class OriginRule:
         """
         if self.kind == RuleKind.STR:
             return self.rule
-        if self.kind == RuleKind.PATH and fnmatch(request_origin, self.rule):
-            return request_origin
-        if (self.kind == RuleKind.REGEX
-                and re.match(self.rule, request_origin, re.DOTALL | re.MULTILINE)):
-            return request_origin
+        if request_origin != 'null':
+            if self.kind == RuleKind.PATH and fnmatch(request_origin, self.rule):
+                return request_origin
+            if (self.kind == RuleKind.REGEX
+                    and re.match(self.rule, request_origin, re.DOTALL | re.MULTILINE)):
+                return request_origin
 
 
 @dataclass
@@ -137,6 +139,12 @@ class Policy:
     ACCESS_CONTROL_ALLOW_METHODS: ClassVar[str] = 'Access-Control-Allow-Methods'
     ACCESS_CONTROL_ALLOW_HEADERS: ClassVar[str] = 'Access-Control-Allow-Headers'
 
+    SIMPLE_METHODS = ['GET', 'POST', 'HEAD']
+    SAFELIST_HEADERS = ['accept', 'accept-language', 'content-language', 'content-type']
+    SAFELIST_CONTENT_TYPE = [
+        'application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'
+    ]
+
     def __post_init__(self):
         if self.allow_credentials:
             allow_any = (
@@ -147,7 +155,9 @@ class Policy:
                 raise PolicyError('Open policy not allowed for credentialed requests')
 
     def preflight_response_headers(
-                self, origin: str, request_credentials: bool = False,
+                self, origin: str, *,
+                strict: bool = False,
+                request_credentials: bool = False,
                 request_method: Optional[str] = None,
                 request_headers: Optional[str] = None,
             ) -> Mapping[str, Union[str, int]]:
@@ -164,6 +174,9 @@ class Policy:
 
         :param origin: value of the Origin request header
         :type origin: str
+        :param strict: flag if strict security has to be applied, defaults to
+                       False
+        :type strict: bool, optional
         :param request_credentials: indicates response to credentialed
                                     request, defaults to False
         :type request_credentials: bool, optional
@@ -174,7 +187,7 @@ class Policy:
         :return: generated header values as Python dict
         :rtype: Mapping[str, Union[str, int]]
         """
-        if not origin or origin == 'null':
+        if not origin or (strict and origin.lower() == 'null'):
             return {}
         resp_headers = {}
         resp_headers.update(self.access_control_allow_origin(origin))
@@ -190,19 +203,24 @@ class Policy:
         return resp_headers
 
     def response_headers(
-                self, origin: str, request_credentials: bool = False
+                self, origin: str, *,
+                strict: bool = False,
+                request_credentials: bool = False,
             ) -> Mapping[str, str]:
         """Generate regular response headers.
 
         :param origin: value of the Origin request header
         :type origin: str
+        :param strict: flag if strict security has to be applied, defaults to
+                       False
+        :type strict: bool, optional
         :param request_credentials: indicates response to credentialed
                                     request, defaults to False
         :type request_credentials: bool, optional
         :return: generated header values as Python dict
         :rtype: Mapping[str, str]
         """
-        if not origin or origin == 'null':
+        if not origin or (strict and origin.lower() == 'null'):
             return {}
         resp_headers = {}
         resp_headers.update(self.access_control_allow_origin(origin))
@@ -228,7 +246,7 @@ class Policy:
         :rtype: Mapping[str, str]
         """
         if self.allow_credentials and request_credentials:
-            if allow_origin != '*':
+            if allow_origin.lower() not in ['*', 'null']:
                 return {self.ACCESS_CONTROL_ALLOW_CREDENTIALS: 'true'}
         return {}
 
@@ -250,7 +268,7 @@ class Policy:
                 allow_origin = rule.allow_origin(origin)
                 if origin == allow_origin:
                     headers[self.ACCESS_CONTROL_ALLOW_ORIGIN] = allow_origin
-                    if allow_origin != '*':
+                    if allow_origin not in ['*', 'null']:
                         headers['Vary'] = 'Origin'
                     break
             return headers
@@ -278,6 +296,8 @@ class Policy:
         if self.allow_methods:
             methods = self.allow_methods
         else:
+            if request_method not in self.SIMPLE_METHODS:
+                return {}
             methods = [request_method]
         return {self.ACCESS_CONTROL_ALLOW_METHODS: ', '.join(methods)}
 

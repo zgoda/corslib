@@ -27,9 +27,21 @@ def test_allow_credentials_setup_invalid_empty_origin(origin):
 
 
 @pytest.mark.parametrize(
-    'origin', ['', None, 'null'], ids=['empty-str', 'none', 'null-literal']
+    'origin', ['', None], ids=['empty-str', 'none']
 )
 def test_preflight_headers_empty_origin(origin):
     policy = Policy(name='policy1')
     rv = policy.preflight_response_headers(origin)
+    assert rv == {}
+
+
+def test_preflight_headers_null_origin_loose():
+    policy = Policy(name='policy1')
+    rv = policy.preflight_response_headers('null')
+    assert '*' in rv.values()
+
+
+def test_preflight_headers_null_origin_strict():
+    policy = Policy(name='policy1')
+    rv = policy.preflight_response_headers('null', strict=True)
     assert rv == {}
