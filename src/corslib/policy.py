@@ -174,8 +174,8 @@ class Policy:
 
         :param origin: value of the Origin request header
         :type origin: str
-        :param strict: flag if strict security has to be applied, defaults to
-                       False
+        :param strict: flag if strict security has to be applied, effectively
+                       treating ``null`` origin as ``*``, defaults to False
         :type strict: bool, optional
         :param request_credentials: indicates response to credentialed
                                     request, defaults to False
@@ -211,8 +211,8 @@ class Policy:
 
         :param origin: value of the Origin request header
         :type origin: str
-        :param strict: flag if strict security has to be applied, defaults to
-                       False
+        :param strict: flag if strict security has to be applied, effectively
+                       treating ``null`` origin as ``*``, defaults to False
         :type strict: bool, optional
         :param request_credentials: indicates response to credentialed
                                     request, defaults to False
@@ -236,7 +236,9 @@ class Policy:
             ) -> Mapping[str, str]:
         """Generate Access-Control-Allow-Credentials header entry.
 
-        If request is to be denied then this method returns empty dict.
+        If request is to be denied or credentials has not been requested then
+        this method returns empty dict. This happens also when rule allows
+        credentials but origin resolves to ``*`` or ``null``.
 
         :param request_credentials: indicates response to credentialed request
         :type request_credentials: bool
@@ -245,16 +247,17 @@ class Policy:
         :return: Access-Control-Allow-Credentials header entry or empty dict
         :rtype: Mapping[str, str]
         """
-        if self.allow_credentials and request_credentials:
-            if allow_origin.lower() not in ['*', 'null']:
-                return {self.ACCESS_CONTROL_ALLOW_CREDENTIALS: 'true'}
+        if not request_credentials:
+            return {}
+        if self.allow_credentials and allow_origin.lower() not in ['*', 'null']:
+            return {self.ACCESS_CONTROL_ALLOW_CREDENTIALS: 'true'}
         return {}
 
     def access_control_allow_origin(self, origin: str) -> Mapping[str, str]:
         """Generate Access-Control-Allow-Origin header entry.
 
-        Additionally if value is not ``*`` then ``Vary`` header value is
-        generated.
+        Additionally if value is not ``*`` or ``null`` then ``Vary`` header
+        value is also included in resulting dict.
 
         :param origin: value of the Origin header
         :type origin: str
@@ -282,8 +285,9 @@ class Policy:
         If no specific method is requested then this method returns empty dict,
         which usually means "default methods" (``GET``, ``HEAD``, ``POST``).
 
-        If policy does not specify allowed methods then all methods are
-        allowed. This is implemented by reflecting requested method.
+        If policy does not specify allowed methods then requested method is
+        reflected but only if it's in a list of *simple methods*. Otherwise
+        list of *simple methods* is returned.
 
         :param request_method: value of Access-Control-Request-Method header
                                from preflight request
@@ -297,7 +301,7 @@ class Policy:
             methods = self.allow_methods
         else:
             if request_method not in self.SIMPLE_METHODS:
-                return {}
+                methods = self.SIMPLE_METHODS
             methods = [request_method]
         return {self.ACCESS_CONTROL_ALLOW_METHODS: ', '.join(methods)}
 
