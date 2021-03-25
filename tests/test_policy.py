@@ -45,3 +45,16 @@ def test_preflight_headers_null_origin_strict():
     policy = Policy(name='policy1')
     rv = policy.preflight_response_headers('null', strict=True)
     assert rv == {}
+
+
+def test_preflight_headers_no_max_age():
+    policy = Policy(name='policy1')
+    rv = policy.preflight_response_headers('http://website.com')
+    assert Policy.ACCESS_CONTROL_MAX_AGE not in rv
+
+
+def test_preflight_headers_max_age():
+    max_age = 60 * 60
+    policy = Policy(name='policy1', max_age=max_age)
+    rv = policy.preflight_response_headers('http://website.com')
+    assert rv[Policy.ACCESS_CONTROL_MAX_AGE] == max_age

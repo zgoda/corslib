@@ -138,6 +138,7 @@ class Policy:
     ACCESS_CONTROL_ALLOW_CREDENTIALS: ClassVar[str] = 'Access-Control-Allow-Credentials'
     ACCESS_CONTROL_ALLOW_METHODS: ClassVar[str] = 'Access-Control-Allow-Methods'
     ACCESS_CONTROL_ALLOW_HEADERS: ClassVar[str] = 'Access-Control-Allow-Headers'
+    ACCESS_CONTROL_MAX_AGE: ClassVar[str] = 'Access-Control-Max-Age'
 
     SIMPLE_METHODS = ['GET', 'POST', 'HEAD']
     SAFELIST_HEADERS = ['accept', 'accept-language', 'content-language', 'content-type']
