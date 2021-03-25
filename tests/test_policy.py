@@ -1,5 +1,6 @@
 import pytest
-from corslib.policy import Policy, OriginRule, PolicyError
+
+from corslib.policy import OriginRule, Policy, PolicyError, RuleKind
 
 
 def test_default_create():
@@ -58,3 +59,29 @@ def test_preflight_headers_max_age():
     policy = Policy(name='policy1', max_age=max_age)
     rv = policy.preflight_response_headers('http://website.com')
     assert rv[Policy.ACCESS_CONTROL_MAX_AGE] == max_age
+
+
+@pytest.mark.parametrize(
+    'rule',
+    [
+        OriginRule(rule='http://my.website.com'),
+        OriginRule(rule='http://??.website.com', kind=RuleKind.PATH),
+        OriginRule(rule=r'^http://\S{2}\.website\.com$', kind=RuleKind.REGEX)
+    ],
+    ids=['str', 'path', 'regex']
+)
+def test_preflight_headers_allow_credentials(rule):
+    policy = Policy(name='policy1', allow_credentials=True, allow_origin=[rule])
+    rv = policy.preflight_response_headers(
+        'http://my.website.com', request_credentials=True
+    )
+    assert rv[Policy.ACCESS_CONTROL_ALLOW_CREDENTIALS] == 'true'
+
+
+def test_preflight_headers_disallow_credentials_no_request():
+    policy = Policy(
+        name='policy1', allow_credentials=True,
+        allow_origin=[OriginRule(rule='http://website.com')],
+    )
+    rv = policy.preflight_response_headers('http://website.com')
+    assert Policy.ACCESS_CONTROL_ALLOW_CREDENTIALS not in rv
