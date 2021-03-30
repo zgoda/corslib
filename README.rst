@@ -22,4 +22,4 @@ Policy-based CORS support library for web applications.
 
 This is framework- and protocol-agnostic library that provides CORS policy object that is able to generate both preflight and regular response headers for `Cross Origin Resource Sharing <https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS>`_.
 
-It tries to be as secure as it's possible while being usable for both development and production. The goal is to provide header generation facility that has no inherent insecurities and does not pruce insecure result under any circumstances.
+It tries to be as secure as it's possible while being usable for both development and production. The goal is to provide header generation facility that has no inherent insecurities and does not produce insecure result under any circumstances.
