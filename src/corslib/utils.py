@@ -13,4 +13,4 @@ def is_request_credentialed(headers: Union[Mapping[str, Any], Sequence[str]]) ->
     :return: flag indicating credentialed status
     :rtype: bool
     """
-    return 'Cookie' in headers or 'Authorization' in headers
+    return "Cookie" in headers or "Authorization" in headers

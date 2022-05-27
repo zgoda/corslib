@@ -14,11 +14,14 @@ class RuleError(ValueError):
 
 
 class InsecureRule(RuleError):  # pragma: nocover
-
     def __init__(
-                self, message: str, *, rule: str, rule_type: str,
-                description: Optional[str] = None,
-            ):
+        self,
+        message: str,
+        *,
+        rule: str,
+        rule_type: str,
+        description: Optional[str] = None,
+    ):
         self.rule = rule
         self.rule_type = rule_type
         self.description = description
@@ -37,9 +40,10 @@ class RuleKind(Enum):
     * ``regex`` allows matching against arbitrary regular expressions supported
       by Python :mod:`re` module
     """
-    STR = 'str'
-    PATH = 'path'
-    REGEX = 'regex'
+
+    STR = "str"
+    PATH = "path"
+    REGEX = "regex"
 
 
 @dataclass
@@ -63,15 +67,15 @@ class OriginRule:
     kind: RuleKind = RuleKind.STR
 
     def __post_init__(self):
-        kw = {'rule': self.rule, 'rule_type': self.kind.value}
+        kw = {"rule": self.rule, "rule_type": self.kind.value}
         if self.kind == RuleKind.REGEX:
-            if not (self.rule.startswith('^') and self.rule.endswith('$')):
-                raise InsecureRule('Insecure rule: partial match regex', **kw) from None
-            if '.*' in self.rule:
-                raise InsecureRule('Insecure rule: too broad', **kw) from None
+            if not (self.rule.startswith("^") and self.rule.endswith("$")):
+                raise InsecureRule("Insecure rule: partial match regex", **kw) from None
+            if ".*" in self.rule:
+                raise InsecureRule("Insecure rule: too broad", **kw) from None
         elif self.kind == RuleKind.PATH:
-            if self.rule.startswith('*') or self.rule.endswith('*'):
-                raise InsecureRule('InsecureRule: open ended', **kw) from None
+            if self.rule.startswith("*") or self.rule.endswith("*"):
+                raise InsecureRule("InsecureRule: open ended", **kw) from None
 
     def allow_origin(self, request_origin: str) -> Optional[str]:
         """Match origin spec from request against rule.
@@ -89,11 +93,12 @@ class OriginRule:
         """
         if self.kind == RuleKind.STR:
             return self.rule
-        if request_origin != 'null':
+        if request_origin != "null":
             if self.kind == RuleKind.PATH and fnmatch(request_origin, self.rule):
                 return request_origin
-            if (self.kind == RuleKind.REGEX
-                    and re.match(self.rule, request_origin, re.DOTALL | re.MULTILINE)):
+            if self.kind == RuleKind.REGEX and re.match(
+                self.rule, request_origin, re.DOTALL | re.MULTILINE
+            ):
                 return request_origin
 
 
@@ -134,39 +139,39 @@ class Policy:
     expose_headers: Optional[Sequence[str]] = None
     max_age: Optional[int] = None
 
-    ACCESS_CONTROL_ALLOW_ORIGIN: ClassVar[str] = 'Access-Control-Allow-Origin'
-    ACCESS_CONTROL_ALLOW_CREDENTIALS: ClassVar[str] = 'Access-Control-Allow-Credentials'
-    ACCESS_CONTROL_ALLOW_METHODS: ClassVar[str] = 'Access-Control-Allow-Methods'
-    ACCESS_CONTROL_ALLOW_HEADERS: ClassVar[str] = 'Access-Control-Allow-Headers'
-    ACCESS_CONTROL_MAX_AGE: ClassVar[str] = 'Access-Control-Max-Age'
+    ACCESS_CONTROL_ALLOW_ORIGIN: ClassVar[str] = "Access-Control-Allow-Origin"
+    ACCESS_CONTROL_ALLOW_CREDENTIALS: ClassVar[str] = "Access-Control-Allow-Credentials"
+    ACCESS_CONTROL_ALLOW_METHODS: ClassVar[str] = "Access-Control-Allow-Methods"
+    ACCESS_CONTROL_ALLOW_HEADERS: ClassVar[str] = "Access-Control-Allow-Headers"
+    ACCESS_CONTROL_MAX_AGE: ClassVar[str] = "Access-Control-Max-Age"
 
-    SIMPLE_METHODS = ['GET', 'POST', 'HEAD']
-    SAFELIST_HEADERS = ['accept', 'accept-language', 'content-language', 'content-type']
+    SIMPLE_METHODS = ["GET", "POST", "HEAD"]
+    SAFELIST_HEADERS = ["accept", "accept-language", "content-language", "content-type"]
     SAFELIST_CONTENT_TYPE = [
-        'application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'
+        "application/x-www-form-urlencoded",
+        "multipart/form-data",
+        "text/plain",
     ]
 
     def __post_init__(self):
         if self.allow_credentials:
-            allow_any = (
-                not self.allow_origin or
-                any(
-                    r.rule in ['*', 'null']
-                    for r
-                    in self.allow_origin
-                    if r.kind == RuleKind.STR
-                )
+            allow_any = not self.allow_origin or any(
+                r.rule in ["*", "null"]
+                for r in self.allow_origin
+                if r.kind == RuleKind.STR
             )
             if allow_any:
-                raise PolicyError('Open policy not allowed for credentialed requests')
+                raise PolicyError("Open policy not allowed for credentialed requests")
 
     def preflight_response_headers(
-                self, origin: str, *,
-                strict: bool = False,
-                request_credentials: bool = False,
-                request_method: Optional[str] = None,
-                request_headers: Optional[str] = None,
-            ) -> Mapping[str, Union[str, int]]:
+        self,
+        origin: str,
+        *,
+        strict: bool = False,
+        request_credentials: bool = False,
+        request_method: Optional[str] = None,
+        request_headers: Optional[str] = None,
+    ) -> Mapping[str, Union[str, int]]:
         """Generate preflight response headers.
 
         This method takes value of Origin header from request and a flag if
@@ -193,7 +198,7 @@ class Policy:
         :return: generated header values as Python dict
         :rtype: Mapping[str, Union[str, int]]
         """
-        if not origin or (strict and origin.lower() == 'null'):
+        if not origin or (strict and origin.lower() == "null"):
             return {}
         resp_headers = {}
         resp_headers.update(self.access_control_allow_origin(origin))
@@ -205,14 +210,16 @@ class Policy:
             )
         )
         if self.max_age:
-            resp_headers['Access-Control-Max-Age'] = self.max_age
+            resp_headers["Access-Control-Max-Age"] = self.max_age
         return resp_headers
 
     def response_headers(
-                self, origin: str, *,
-                strict: bool = False,
-                request_credentials: bool = False,
-            ) -> Mapping[str, str]:
+        self,
+        origin: str,
+        *,
+        strict: bool = False,
+        request_credentials: bool = False,
+    ) -> Mapping[str, str]:
         """Generate regular response headers.
 
         :param origin: value of the Origin request header
@@ -226,7 +233,7 @@ class Policy:
         :return: generated header values as Python dict
         :rtype: Mapping[str, str]
         """
-        if not origin or (strict and origin.lower() == 'null'):
+        if not origin or (strict and origin.lower() == "null"):
             return {}
         resp_headers = {}
         resp_headers.update(self.access_control_allow_origin(origin))
@@ -238,8 +245,8 @@ class Policy:
         return resp_headers
 
     def access_control_allow_credentials(
-                self, request_credentials: bool, allow_origin: str
-            ) -> Mapping[str, str]:
+        self, request_credentials: bool, allow_origin: str
+    ) -> Mapping[str, str]:
         """Generate Access-Control-Allow-Credentials header entry.
 
         If request is to be denied or credentials has not been requested then
@@ -253,10 +260,12 @@ class Policy:
         :return: Access-Control-Allow-Credentials header entry or empty dict
         :rtype: Mapping[str, str]
         """
-        if not request_credentials:
-            return {}
-        if self.allow_credentials and allow_origin.lower() not in ['*', 'null']:
-            return {self.ACCESS_CONTROL_ALLOW_CREDENTIALS: 'true'}
+        if (
+            request_credentials
+            and self.allow_credentials
+            and allow_origin.lower() not in ["*", "null"]
+        ):
+            return {self.ACCESS_CONTROL_ALLOW_CREDENTIALS: "true"}
         return {}
 
     def access_control_allow_origin(self, origin: str) -> Mapping[str, str]:
@@ -277,15 +286,15 @@ class Policy:
                 allow_origin = rule.allow_origin(origin)
                 if origin == allow_origin:
                     headers[self.ACCESS_CONTROL_ALLOW_ORIGIN] = allow_origin
-                    if allow_origin not in ['*', 'null']:
-                        headers['Vary'] = 'Origin'
+                    if allow_origin not in ["*", "null"]:
+                        headers["Vary"] = "Origin"
                     break
             return headers
-        return {self.ACCESS_CONTROL_ALLOW_ORIGIN: '*'}
+        return {self.ACCESS_CONTROL_ALLOW_ORIGIN: "*"}
 
     def access_control_allow_methods(
-                self, request_method: Optional[str]
-            ) -> Mapping[str, str]:
+        self, request_method: Optional[str]
+    ) -> Mapping[str, str]:
         """Generate Access-Control-Allow-Methods header entry.
 
         If no specific method is requested then this method returns empty dict,
@@ -309,11 +318,11 @@ class Policy:
             if request_method not in self.SIMPLE_METHODS:
                 methods = self.SIMPLE_METHODS
             methods = [request_method]
-        return {self.ACCESS_CONTROL_ALLOW_METHODS: ', '.join(methods)}
+        return {self.ACCESS_CONTROL_ALLOW_METHODS: ", ".join(methods)}
 
     def access_control_allow_headers(
-                self, request_headers: Optional[str]
-            ) -> Mapping[str, str]:
+        self, request_headers: Optional[str]
+    ) -> Mapping[str, str]:
         """Generate Access-Control-Allow-Headers header entry.
 
         If no specific headers are requested then this method returns empty
@@ -333,5 +342,5 @@ class Policy:
         if self.allow_headers:
             headers = self.allow_headers
         else:
-            headers = [x.strip() for x in request_headers.split(',')]
-        return {self.ACCESS_CONTROL_ALLOW_HEADERS: ', '.join(headers)}
+            headers = [x.strip() for x in request_headers.split(",")]
+        return {self.ACCESS_CONTROL_ALLOW_HEADERS: ", ".join(headers)}
