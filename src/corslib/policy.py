@@ -32,10 +32,11 @@ class RuleKind(Enum):
     """Enumeration of supported rule kinds.
 
     * ``str`` kind of rule should be used if the rule describes exact host name
-      or allows all hosts (``*``)
+      or allows all hosts (``*``); also this is the only rule that allows to
+      support special ``null`` origin
     * ``path`` kind uses filename pattern matching provided by :mod:`fnmatch`,
-      this allows for example to match all subdomains
-      (``http://*.mydomain.com``) or sets of specific hosts
+      this allows for example to match whole subdomains
+      (``http://*.mydomain.com``) or partial names
       (``http://myapp-prod-??.mydomain.com``)
     * ``regex`` allows matching against arbitrary regular expressions supported
       by Python :mod:`re` module
@@ -70,12 +71,12 @@ class OriginRule:
         kw = {"rule": self.rule, "rule_type": self.kind.value}
         if self.kind == RuleKind.REGEX:
             if not (self.rule.startswith("^") and self.rule.endswith("$")):
-                raise InsecureRule("Insecure rule: partial match regex", **kw) from None
+                raise InsecureRule("Insecure rule: partial match regex", **kw)
             if ".*" in self.rule:
-                raise InsecureRule("Insecure rule: too broad", **kw) from None
+                raise InsecureRule("Insecure rule: too broad", **kw)
         elif self.kind == RuleKind.PATH:
             if self.rule.startswith("*") or self.rule.endswith("*"):
-                raise InsecureRule("InsecureRule: open ended", **kw) from None
+                raise InsecureRule("InsecureRule: open ended", **kw)
 
     def allow_origin(self, request_origin: str) -> Optional[str]:
         """Match origin spec from request against rule.
@@ -329,12 +330,12 @@ class Policy:
         dict, which usually means "default safe headers".
 
         If policy does not specify allowed headers then all headers are
-        allowed. Tis is implemented by reflecting requested headers.
+        allowed. This is implemented by reflecting requested headers.
 
         :param request_headers: value of Access-Control-Request-Headers header
                                 from preflight request
         :type request_headers: Optional[str]
-        :return: Access-Control-Allow-Headers entry or empty dict
+        :return: Access-Control-Allow-Headers entry as dict or empty dict
         :rtype: Mapping[str, str]
         """
         if not request_headers:
